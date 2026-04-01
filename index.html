@@ -1,0 +1,1134 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Prompt Template Filler</title>
+<style>
+:root {
+  --primary:       #6C63FF;
+  --primary-dark:  #5A52D5;
+  --secondary:     #FF6584;
+  --success:       #38A169;
+  --warning:       #C05621;
+  --bg:            #E8DDD0;
+  --card:          #F5F0EA;
+  --border:        #D8DEE9;
+  --border-focus:  #6C63FF;
+  --text:          #2D3748;
+  --muted:         #718096;
+  --mono:          'SF Mono', 'Consolas', 'Menlo', monospace;
+  --radius:        10px;
+  --shadow:        0 1px 3px rgba(0,0,0,.08), 0 4px 16px rgba(0,0,0,.05);
+}
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Hiragino Sans', sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  min-height: 100vh;
+  font-size: 14px;
+}
+
+/* ── Header ─────────────────────────────────────────────── */
+.header {
+  height: 70px;
+  background: url('header.png') left center / cover no-repeat;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 24px;
+  gap: 12px;
+}
+
+.header-title { font-size: 1.15rem; font-weight: 700; letter-spacing: -.3px; color: #000; }
+.header-sub   { font-size: .78rem; margin-top: 2px; color: #000; }
+
+.header-link {
+  color: #000;
+  text-decoration: none;
+  font-size: .78rem;
+  border: 1px solid rgba(0,0,0,.3);
+  padding: 5px 13px;
+  border-radius: 20px;
+  white-space: nowrap;
+  transition: background .15s;
+}
+.header-link:hover { background: rgba(0,0,0,.08); }
+
+/* ── Layout ─────────────────────────────────────────────── */
+.workspace {
+  display: grid;
+  grid-template-columns: 340px 1fr 1fr;
+  gap: 14px;
+  padding: 16px;
+  min-height: calc(100vh - 70px);
+  align-items: start;
+}
+
+@media (max-width: 1100px) {
+  .workspace { grid-template-columns: 1fr 1fr; }
+  .panel-output { grid-column: 1 / -1; }
+}
+@media (max-width: 680px) {
+  .workspace { grid-template-columns: 1fr; }
+  .panel-output { grid-column: unset; }
+}
+
+/* ── Card ───────────────────────────────────────────────── */
+.card {
+  background: var(--card);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  border: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.card-head {
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--border);
+  background: #FAFBFD;
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+}
+
+.step-num {
+  width: 26px; height: 26px;
+  border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  font-size: .72rem; font-weight: 800;
+  color: #fff;
+  flex-shrink: 0;
+  margin-top: 1px;
+}
+
+.card-head-text h2 { font-size: .9rem; font-weight: 700; }
+.card-head-text p  { font-size: .72rem; color: var(--muted); margin-top: 2px; }
+
+.card-body {
+  padding: 14px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+/* ── Form elements ──────────────────────────────────────── */
+.label {
+  font-size: .7rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: .05em;
+  color: var(--muted);
+  margin-bottom: 5px;
+}
+
+textarea {
+  width: 100%;
+  border: 1.5px solid var(--border);
+  border-radius: 7px;
+  padding: 9px 11px;
+  font-family: var(--mono);
+  font-size: .75rem;
+  line-height: 1.65;
+  resize: vertical;
+  background: #FAFBFD;
+  color: var(--text);
+  transition: border-color .2s, background .2s;
+}
+textarea:focus       { outline: none; border-color: var(--border-focus); background: #fff; }
+textarea.is-output   { background: #F0FFF4; border-color: #9AE6B4; color: #1A4731; cursor: default; }
+textarea:read-only:focus { border-color: #9AE6B4; }
+
+/* ── Buttons ─────────────────────────────────────────────── */
+.btn {
+  display: inline-flex; align-items: center; justify-content: center;
+  gap: 5px;
+  padding: 7px 14px;
+  border-radius: 7px;
+  border: none;
+  font-size: .78rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all .15s;
+  white-space: nowrap;
+}
+.btn-primary { background: var(--primary); color: #fff; }
+.btn-primary:hover { background: var(--primary-dark); transform: translateY(-1px); }
+.btn-success { background: var(--success); color: #fff; }
+.btn-success:hover { opacity: .9; transform: translateY(-1px); }
+.btn-ghost {
+  background: transparent;
+  border: 1.5px solid var(--border);
+  color: var(--muted);
+}
+.btn-ghost:hover { border-color: var(--primary); color: var(--primary); }
+.btn-danger-ghost { background: transparent; border: 1.5px solid #FEB2B2; color: #C53030; }
+.btn-danger-ghost:hover { background: #FFF5F5; }
+
+.btn-sm { padding: 4px 9px; font-size: .71rem; }
+.btn-row { display: flex; gap: 7px; flex-wrap: wrap; align-items: center; }
+
+/* ── Hint box ────────────────────────────────────────────── */
+.hint {
+  background: #F0EFFF;
+  border-left: 3px solid var(--primary);
+  border-radius: 0 6px 6px 0;
+  padding: 8px 12px;
+  font-size: .72rem;
+  line-height: 1.7;
+  color: #4A3F9F;
+}
+.hint code {
+  font-family: var(--mono);
+  background: rgba(108,99,255,.15);
+  padding: 1px 5px;
+  border-radius: 3px;
+  font-size: .92em;
+}
+.hint b { font-weight: 700; }
+
+/* ── Detected chips ─────────────────────────────────────── */
+.chips { display: flex; flex-wrap: wrap; gap: 5px; min-height: 24px; }
+
+.chip {
+  display: inline-flex; align-items: center; gap: 4px;
+  padding: 3px 9px;
+  border-radius: 20px;
+  font-size: .69rem;
+  font-weight: 700;
+}
+.chip-ok  { background: #EBF8FF; color: #2B6CB0; border: 1px solid #90CDF4; }
+.chip-bad { background: #FFF5F5; color: #C53030; border: 1px solid #FEB2B2; }
+
+/* ── Unknown mapping rows ────────────────────────────────── */
+.unknown-row {
+  display: flex;
+  gap: 7px;
+  align-items: center;
+  padding: 8px 10px;
+  background: #FFF5F5;
+  border: 1px dashed #FEB2B2;
+  border-radius: 7px;
+}
+.unknown-preview {
+  font-family: var(--mono);
+  font-size: .68rem;
+  color: var(--muted);
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.key-input {
+  width: 130px;
+  border: 1.5px solid var(--border);
+  border-radius: 6px;
+  padding: 5px 8px;
+  font-family: var(--mono);
+  font-size: .75rem;
+  background: #fff;
+}
+.key-input:focus { outline: none; border-color: var(--border-focus); }
+
+/* ── Params table ───────────────────────────────────────── */
+.param-row {
+  display: flex; gap: 6px; align-items: center;
+}
+.param-row input {
+  flex: 1;
+  border: 1.5px solid var(--border);
+  border-radius: 6px;
+  padding: 5px 8px;
+  font-family: var(--mono);
+  font-size: .75rem;
+  background: #FAFBFD;
+}
+.param-row input:focus { outline: none; border-color: var(--border-focus); }
+.param-sep { color: var(--muted); font-weight: 700; font-size: .8rem; }
+
+/* ── Collapsible ────────────────────────────────────────── */
+.collapsible-btn {
+  background: none;
+  border: none;
+  cursor: pointer;
+  display: flex; align-items: center; gap: 5px;
+  font-size: .75rem; font-weight: 700;
+  color: var(--muted);
+  padding: 3px 0;
+  width: 100%;
+  text-align: left;
+}
+.collapsible-btn .arrow { transition: transform .2s; display: inline-block; }
+.collapsible-btn.open .arrow { transform: rotate(90deg); }
+
+.collapsible-panel { display: none; padding-top: 10px; }
+.collapsible-panel.open { display: block; }
+
+/* ── Error / status ─────────────────────────────────────── */
+.error-box {
+  background: #FFF5F5;
+  border: 1px solid #FEB2B2;
+  border-radius: 6px;
+  padding: 7px 11px;
+  font-size: .73rem;
+  color: #C53030;
+  display: none;
+}
+.error-box.show { display: block; }
+
+.status-bar {
+  font-size: .71rem;
+  color: var(--muted);
+  text-align: right;
+  padding-top: 4px;
+}
+.status-bar .ok  { color: var(--success); font-weight: 700; }
+.status-bar .bad { color: var(--warning); font-weight: 700; }
+
+/* ── Copy feedback ──────────────────────────────────────── */
+.copy-fb {
+  font-size: .75rem; color: var(--success); font-weight: 700;
+  opacity: 0; transition: opacity .3s;
+}
+.copy-fb.show { opacity: 1; }
+
+/* ── Stamp tags copy button ─────────────────────────────── */
+.btn-stamp-tags {
+  background: linear-gradient(135deg, #FF6584 0%, #FF8C42 100%);
+  color: #fff;
+  font-size: .82rem;
+  padding: 10px 18px;
+  border-radius: 8px;
+  box-shadow: 0 3px 12px rgba(255,101,132,.45);
+  animation: stamp-pulse 2.2s ease-in-out infinite;
+}
+.btn-stamp-tags:hover {
+  opacity: .93;
+  transform: translateY(-2px);
+  box-shadow: 0 5px 18px rgba(255,101,132,.6);
+}
+@keyframes stamp-pulse {
+  0%, 100% { box-shadow: 0 3px 12px rgba(255,101,132,.45); }
+  50%       { box-shadow: 0 3px 22px rgba(255,101,132,.75); }
+}
+
+/* ── Step0 panel ────────────────────────────────────────── */
+.step0-panel {
+  background: #F0EFFF;
+  border: 1px solid #C4B9FF;
+  border-radius: 8px;
+  padding: 11px 13px;
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+}
+.step0-panel .label { margin-bottom: 0; }
+.step0-select {
+  width: 100%;
+  border: 1.5px solid var(--border);
+  border-radius: 6px;
+  padding: 6px 9px;
+  font-size: .8rem;
+  background: #fff;
+  color: var(--text);
+}
+.step0-select:focus { outline: none; border-color: var(--border-focus); }
+.step0-text-input {
+  width: 100%;
+  border: 1.5px solid var(--border);
+  border-radius: 6px;
+  padding: 6px 9px;
+  font-size: .8rem;
+  background: #fff;
+  color: var(--text);
+  margin-top: 5px;
+}
+.step0-text-input:focus { outline: none; border-color: var(--border-focus); }
+
+/* ── Divider ────────────────────────────────────────────── */
+.divider {
+  display: flex; align-items: center; gap: 8px;
+  font-size: .69rem; color: var(--muted); font-weight: 700;
+  text-transform: uppercase; letter-spacing: .04em;
+}
+.divider::before, .divider::after {
+  content: ''; flex: 1;
+  border-top: 1px solid var(--border);
+}
+
+/* ── Quick ref table ────────────────────────────────────── */
+.ref-table { width: 100%; border-collapse: collapse; font-size: .71rem; }
+.ref-table td { padding: 4px 7px; border-bottom: 1px solid var(--border); vertical-align: top; }
+.ref-table td:first-child { width: 44%; }
+.ref-table code {
+  font-family: var(--mono);
+  background: rgba(108,99,255,.1);
+  padding: 1px 5px;
+  border-radius: 3px;
+  white-space: nowrap;
+}
+</style>
+</head>
+<body>
+
+<header class="header">
+  <div>
+    <div class="header-title">🎭 Prompt Template Filler</div>
+    <div class="header-sub">JSON 出力をペーストしてプレイスホルダを自動補完 — LINE Stamp Automation</div>
+  </div>
+  <a class="header-link" href="https://note.com/nifty_sheep7386" target="_blank">📝 note 記事へ</a>
+</header>
+
+<div class="workspace">
+
+  <!-- ════════════════════════════════════════════════════
+       Panel 1 — JSON Data
+  ════════════════════════════════════════════════════ -->
+  <div class="card" id="panel-json">
+    <div class="card-head">
+      <div class="step-num" style="background:var(--primary)">1</div>
+      <div class="card-head-text">
+        <h2>JSON データ入力</h2>
+        <p>AI の出力 JSON を貼り付け（複数可）</p>
+      </div>
+    </div>
+    <div class="card-body">
+
+      <div class="hint">
+        複数の JSON を<b>連続してそのまま</b>貼り付けてOKです。<br>
+        キーを自動判別します。判別できない場合は手動で割り当てられます。
+      </div>
+
+      <div>
+        <div class="label">JSON ペーストエリア</div>
+        <textarea id="jsonInput" rows="11"
+          placeholder='{"theme":"...", "style":"...", "color_palette":{...}}&#10;{"stamps":[...]}&#10;&#10;— または JSON を複数まとめてここに貼り付け —'></textarea>
+      </div>
+
+      <div class="btn-row">
+        <button class="btn btn-primary" onclick="parseJSONs()">▶ 解析</button>
+        <button class="btn btn-ghost btn-sm" onclick="clearData()">✕ クリア</button>
+      </div>
+
+      <div id="errorBox" class="error-box"></div>
+
+      <div>
+        <div class="label">検出されたステップキー</div>
+        <div id="detectedChips" class="chips">
+          <span style="font-size:.72rem;color:var(--muted)">まだ解析されていません</span>
+        </div>
+      </div>
+
+      <div id="unknownSection"></div>
+
+      <!-- Step0 motif + target panel -->
+      <div id="step0Panel" style="display:none" class="step0-panel">
+        <div class="label">Step 0 — キャラクター選択</div>
+        <div>
+          <div style="font-size:.72rem;color:#4A3F9F;margin-bottom:4px">モチーフ <span style="font-weight:400">(1つ選択 / 手入力)</span></div>
+          <select id="step0MotifSelect" class="step0-select" onchange="onStep0MotifChange()"></select>
+          <input type="text" id="step0CustomInput" class="step0-text-input"
+            placeholder="キャラクター名を手入力..." style="display:none"
+            oninput="applyTemplate()">
+        </div>
+        <div>
+          <div style="font-size:.72rem;color:#4A3F9F;margin-bottom:4px">ターゲット <code style="font-family:var(--mono);font-size:.88em;background:rgba(108,99,255,.15);padding:1px 5px;border-radius:3px">{{step0.target}}</code></div>
+          <input type="text" id="step0TargetInput" class="step0-text-input"
+            placeholder="ターゲット層を入力..."
+            oninput="applyTemplate()">
+        </div>
+      </div>
+
+      <!-- Stamp plan preview panel -->
+      <div id="stampPlanPanel" style="display:none">
+        <div style="border:1px solid var(--border);border-radius:8px;overflow:hidden">
+          <button class="collapsible-btn" id="stampPlanToggle"
+            onclick="toggleCollapsible('stampPlanToggle','stampPlanContent')"
+            style="padding:9px 12px;background:#FAFBFD;border-bottom:1px solid var(--border);width:100%">
+            <span class="arrow">▸</span>
+            <span id="stampPlanLabel">スタンプ一覧 — 展開して確認</span>
+          </button>
+          <div class="collapsible-panel" id="stampPlanContent">
+            <div id="stampPlanTable" style="overflow-x:auto;max-height:340px;overflow-y:auto"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Stamp tags copy panel -->
+      <div id="stampTagsPanel" style="display:none">
+        <div style="background:linear-gradient(135deg,#FFF0F3 0%,#FFF6EE 100%);border:1px solid #FFB8C8;border-radius:8px;padding:11px 13px;display:flex;flex-direction:column;gap:8px">
+          <div style="font-size:.72rem;color:#9B3060;font-weight:700;text-transform:uppercase;letter-spacing:.05em">🏷 スタンプタグ検出</div>
+          <div style="font-size:.72rem;color:#7B4060">タグ一覧を <code style="font-family:var(--mono);background:rgba(255,101,132,.15);padding:1px 5px;border-radius:3px">N: tag1, tag2, ...</code> 形式でコピーします</div>
+          <div class="btn-row">
+            <button class="btn btn-stamp-tags" onclick="copyStampTags()">🏷 タグ一覧をコピー</button>
+            <span class="copy-fb" id="stampTagsCopyFb">✓ コピーしました！</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Params collapsible -->
+      <div>
+        <button class="collapsible-btn" id="paramToggle" onclick="toggleCollapsible('paramToggle','paramPanel')">
+          <span class="arrow">▸</span> パラメータ <code style="font-size:.65rem;background:rgba(108,99,255,.1);border-radius:3px;padding:1px 5px;font-family:var(--mono)">{{param.*}}</code>
+        </button>
+        <div class="collapsible-panel" id="paramPanel">
+          <div style="font-size:.72rem;color:var(--muted);margin-bottom:8px">
+            テンプレート内の <code style="font-family:var(--mono)">{{param.キー名}}</code> に代入される値を設定します
+          </div>
+          <div id="paramsContainer" style="display:flex;flex-direction:column;gap:6px"></div>
+          <button class="btn btn-ghost btn-sm" style="margin-top:8px" onclick="addParamRow()">+ 追加</button>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ════════════════════════════════════════════════════
+       Panel 2 — Template
+  ════════════════════════════════════════════════════ -->
+  <div class="card">
+    <div class="card-head">
+      <div class="step-num" style="background:var(--secondary)">2</div>
+      <div class="card-head-text">
+        <h2>プロンプトテンプレート</h2>
+        <p>プレイスホルダ入りのプロンプトを貼り付け</p>
+      </div>
+    </div>
+    <div class="card-body">
+
+      <!-- Quick ref -->
+      <div>
+        <button class="collapsible-btn" id="refToggle" onclick="toggleCollapsible('refToggle','refPanel')">
+          <span class="arrow">▸</span> プレイスホルダ 構文クイックリファレンス
+        </button>
+        <div class="collapsible-panel" id="refPanel">
+          <table class="ref-table" style="margin-top:6px">
+            <tr>
+              <td><code>{{step1.theme}}</code></td>
+              <td>単純な値参照</td>
+            </tr>
+            <tr>
+              <td><code>{{step1.color_palette.bg_color}}</code></td>
+              <td>ネスト値参照</td>
+            </tr>
+            <tr>
+              <td><code>{{param.session_num}}</code></td>
+              <td>実行時パラメータ</td>
+            </tr>
+            <tr>
+              <td><code>{{#each step0.motifs}}<br>{{rank}}. {{name}}<br>{{/each}}</code></td>
+              <td>配列ループ（全件）</td>
+            </tr>
+            <tr>
+              <td><code>{{#each step2_5.stamps session=1}}<br>{{id}} {{phrase}}<br>{{/each}}</code></td>
+              <td>フィルタ付きループ<br><span style="color:var(--muted)">整数・文字列どちらも可</span></td>
+            </tr>
+            <tr>
+              <td><code>{{typography.font_style}}</code></td>
+              <td>ループ内ネスト参照</td>
+            </tr>
+            <tr style="border-bottom:none">
+              <td><code>{{#each step2_5.stamps session={{param.session_num}}}}</code></td>
+              <td>フィルタ値にパラメータを使用</td>
+            </tr>
+          </table>
+        </div>
+      </div>
+
+      <div>
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:5px">
+          <div class="label" style="margin-bottom:0">テンプレート</div>
+          <button class="btn btn-ghost btn-sm" onclick="clearTemplate()">✕ クリア</button>
+        </div>
+        <textarea id="templateInput" rows="24"
+          placeholder="Theme: {{step1.theme}}&#10;Style: {{step1.style}}&#10;&#10;Session 1 Phrases:&#10;{{#each step2_5.stamps session=1}}#{{id}} {{phrase}} ({{situation}})&#10;{{/each}}"></textarea>
+      </div>
+
+      <div class="btn-row">
+        <button class="btn btn-primary" onclick="applyTemplate()">⚡ テンプレートを適用</button>
+        <button class="btn btn-ghost btn-sm" onclick="clearTemplate()">✕ クリア</button>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ════════════════════════════════════════════════════
+       Panel 3 — Output
+  ════════════════════════════════════════════════════ -->
+  <div class="card panel-output">
+    <div class="card-head">
+      <div class="step-num" style="background:var(--success)">3</div>
+      <div class="card-head-text">
+        <h2>出力プロンプト</h2>
+        <p>プレイスホルダが補完されたプロンプト</p>
+      </div>
+    </div>
+    <div class="card-body">
+
+      <div class="btn-row">
+        <button class="btn btn-success" onclick="copyOutput()">📋 クリップボードにコピー</button>
+        <span class="copy-fb" id="copyFeedback">✓ コピーしました！</span>
+      </div>
+
+      <div>
+        <textarea id="outputArea" class="is-output" rows="28"
+          readonly placeholder="← 「テンプレートを適用」を押すと、補完されたプロンプトがここに表示されます"></textarea>
+        <div class="status-bar" id="statusBar"></div>
+      </div>
+
+    </div>
+  </div>
+
+</div><!-- /.workspace -->
+
+<script>
+'use strict';
+
+// ─────────────────────────────────────────────────────
+// State
+// ─────────────────────────────────────────────────────
+let detectedObjects  = [];   // [{key: 'step1', obj: {...}}, {key: null, obj: {...}}]
+let params           = {};   // {session_num: 1}
+let stampTagsData    = null; // stamp_tags JSON when detected
+
+// ─────────────────────────────────────────────────────
+// Auto-detection rules
+// ─────────────────────────────────────────────────────
+const DETECTORS = [
+  { key: 'step0',      test: o => Array.isArray(o.motifs) },
+  { key: 'step1',      test: o => o.theme !== undefined && o.style !== undefined && o.color_palette !== undefined },
+  { key: 'step2',      test: o => o.english_title !== undefined },
+  { key: 'step2_5',    test: o => Array.isArray(o.stamps) },
+  { key: 'step4',      test: o => o.main_image !== undefined && o.tab_image !== undefined },
+  { key: 'stamp_tags', test: o => {
+      const keys = Object.keys(o);
+      return keys.length > 0 && keys.every(k => /^\d+$/.test(k) && Array.isArray(o[k]));
+    }
+  },
+];
+
+function autoDetect(obj) {
+  for (const { key, test } of DETECTORS) {
+    try { if (test(obj)) return key; } catch(_) {}
+  }
+  return null;
+}
+
+// ─────────────────────────────────────────────────────
+// Multi-JSON parser
+// ─────────────────────────────────────────────────────
+function parseMultipleJSONs(text) {
+  text = text.trim();
+  if (!text) return [];
+
+  // 1. Try as a JSON array
+  if (text.startsWith('[')) {
+    try {
+      const arr = JSON.parse(text);
+      if (Array.isArray(arr)) return arr;
+    } catch(_) {}
+  }
+
+  // 2. Try as a single object
+  try { return [JSON.parse(text)]; } catch(_) {}
+
+  // 3. Extract multiple top-level objects via brace-depth scanning
+  //    (handles strings containing { } by tracking string state)
+  const results = [];
+  let depth = 0, inStr = false, esc = false, start = -1;
+
+  for (let i = 0; i < text.length; i++) {
+    const ch = text[i];
+    if (esc)              { esc = false; continue; }
+    if (ch === '\\' && inStr) { esc = true; continue; }
+    if (ch === '"')       { inStr = !inStr; continue; }
+    if (inStr)            continue;
+
+    if (ch === '{') {
+      if (depth === 0) start = i;
+      depth++;
+    } else if (ch === '}') {
+      depth--;
+      if (depth === 0 && start !== -1) {
+        try { results.push(JSON.parse(text.slice(start, i + 1))); } catch(_) {}
+        start = -1;
+      }
+    }
+  }
+
+  return results;
+}
+
+// ─────────────────────────────────────────────────────
+// Template engine
+// ─────────────────────────────────────────────────────
+function getPath(obj, path) {
+  if (obj == null || !path) return undefined;
+  return path.split('.').reduce((acc, key) => (acc != null ? acc[key] : undefined), obj);
+}
+
+function fillTemplate(template, ctx) {
+  // Step 1 — pre-resolve all {{param.*}} (so they work inside #each filter values too)
+  template = template.replace(/\{\{(param\.[^}]+)\}\}/g, (_, path) => {
+    const v = getPath(ctx, path);
+    return v !== undefined ? String(v) : `{{${path}}}`;
+  });
+
+  // Step 2 — expand {{#each path [key=value]}} ... {{/each}} blocks
+  // Use a loop to handle multiple/sequential each blocks (not nested)
+  let safety = 20;
+  let prev;
+  do {
+    prev = template;
+    template = template.replace(
+      /\{\{#each\s+([\w._]+)(?:\s+([\w]+)=([\w.-]+))?\}\}([\s\S]*?)\{\{\/each\}\}/g,
+      (_, arrayPath, filterKey, filterVal, inner) => {
+        let arr = getPath(ctx, arrayPath);
+        if (!Array.isArray(arr)) {
+          return `[⚠ "${arrayPath}" は配列ではありません]`;
+        }
+
+        // Apply filter if provided
+        if (filterKey !== undefined && filterVal !== undefined) {
+          const numVal = Number(filterVal);
+          const cmp = isNaN(numVal) ? filterVal : numVal;
+          arr = arr.filter(item => item[filterKey] == cmp);
+        }
+
+        // Expand each item
+        return arr.map(item => {
+          return inner.replace(/\{\{([\w.]+)\}\}/g, (m, fieldPath) => {
+            const v = getPath(item, fieldPath);
+            return v !== undefined ? String(v) : m;
+          });
+        }).join('');
+      }
+    );
+    safety--;
+  } while (template !== prev && safety > 0);
+
+  // Step 3 — replace remaining simple {{stepX.field}} references
+  template = template.replace(/\{\{([\w._]+)\}\}/g, (match, path) => {
+    const v = getPath(ctx, path);
+    return v !== undefined ? String(v) : match; // keep unresolved visible
+  });
+
+  return template;
+}
+
+// ─────────────────────────────────────────────────────
+// Build merged context from all detected objects + params
+// ─────────────────────────────────────────────────────
+function buildContext() {
+  const ctx = {};
+
+  // Merge known objects (stamp_tags is UI-only, not injected into template context)
+  for (const entry of detectedObjects) {
+    if (entry.key && entry.key !== 'stamp_tags') ctx[entry.key] = entry.obj;
+  }
+
+  // Merge unknown objects with manually assigned keys
+  for (const entry of detectedObjects) {
+    if (!entry.key && entry.manualKey) ctx[entry.manualKey] = entry.obj;
+  }
+
+  // Step0 overrides: single-motif selection + editable target
+  if (ctx.step0) {
+    const motifs     = ctx.step0.motifs || [];
+    const selectEl   = document.getElementById('step0MotifSelect');
+    const customEl   = document.getElementById('step0CustomInput');
+    const targetEl   = document.getElementById('step0TargetInput');
+
+    let selectedMotifs;
+    if (selectEl && selectEl.value === '__custom__') {
+      const text = customEl ? customEl.value.trim() : '';
+      selectedMotifs = [{ rank: 1, name: text, gimmick: '', phrase: '', insight: '', search_tags: [] }];
+    } else if (selectEl) {
+      const idx = parseInt(selectEl.value, 10);
+      const m = motifs[isNaN(idx) ? 0 : idx];
+      selectedMotifs = m ? [m] : motifs.slice(0, 1);
+    } else {
+      selectedMotifs = motifs.slice(0, 1);
+    }
+
+    ctx.step0 = {
+      ...ctx.step0,
+      motifs: selectedMotifs,
+      target: targetEl ? targetEl.value : ctx.step0.target,
+    };
+  }
+
+  // Params
+  ctx.param = { ...params };
+
+  return ctx;
+}
+
+// ─────────────────────────────────────────────────────
+// UI — Step0 panel
+// ─────────────────────────────────────────────────────
+function renderStep0Panel() {
+  const step0Entry = detectedObjects.find(e => e.key === 'step0');
+  const panel      = document.getElementById('step0Panel');
+  if (!step0Entry) { panel.style.display = 'none'; return; }
+
+  panel.style.display = 'block';
+  const motifs  = step0Entry.obj.motifs || [];
+  const target  = step0Entry.obj.target || '';
+
+  const select  = document.getElementById('step0MotifSelect');
+  const prevVal = select.value;
+
+  // Rebuild option list
+  select.innerHTML = motifs.map((m, i) =>
+    `<option value="${i}">${m.rank !== undefined ? 'Rank ' + m.rank + ': ' : ''}${m.name || '(名前なし)'}</option>`
+  ).join('') + '<option value="__custom__">✏ 手入力...</option>';
+
+  // Try to restore previous selection; otherwise default to 0
+  select.value = prevVal;
+  if (select.value === '' || select.selectedIndex < 0) select.selectedIndex = 0;
+
+  // Sync custom input visibility
+  const customEl = document.getElementById('step0CustomInput');
+  customEl.style.display = select.value === '__custom__' ? 'block' : 'none';
+
+  // Set target input default (only if it currently has no value or matches old default)
+  const targetEl = document.getElementById('step0TargetInput');
+  if (!targetEl.dataset.populated) {
+    targetEl.value = target;
+    targetEl.dataset.populated = '1';
+  }
+}
+
+function onStep0MotifChange() {
+  const select   = document.getElementById('step0MotifSelect');
+  const customEl = document.getElementById('step0CustomInput');
+  customEl.style.display = select.value === '__custom__' ? 'block' : 'none';
+  applyTemplate();
+}
+
+// ─────────────────────────────────────────────────────
+// UI — Stamp plan preview panel
+// ─────────────────────────────────────────────────────
+function renderStampPlanPanel() {
+  const entry = detectedObjects.find(e => e.key === 'step2_5');
+  const panel = document.getElementById('stampPlanPanel');
+  if (!entry || !Array.isArray(entry.obj.stamps)) {
+    panel.style.display = 'none';
+    return;
+  }
+
+  panel.style.display = 'block';
+  const stamps = entry.obj.stamps;
+
+  document.getElementById('stampPlanLabel').textContent =
+    `スタンプ一覧 (${stamps.length}件) — 展開して確認`;
+
+  const sessionColor = s => s === 1 ? '#EBF8FF' : '#F0FFF4';
+  const sessionText  = s => s === 1 ? '#2B6CB0' : '#276749';
+
+  const rows = stamps.map(s => {
+    const typo = [s.typography?.font_style, s.typography?.layout]
+      .filter(Boolean).join(' / ');
+    return `<tr style="border-bottom:1px solid var(--border)">
+      <td style="padding:4px 7px;text-align:center;font-weight:700;color:var(--muted)">${s.id}</td>
+      <td style="padding:4px 7px;text-align:center">
+        <span style="background:${sessionColor(s.session)};color:${sessionText(s.session)};border-radius:10px;padding:1px 7px;font-size:.67rem;font-weight:700">S${s.session}</span>
+      </td>
+      <td style="padding:4px 7px;font-weight:600">${s.phrase || ''}</td>
+      <td style="padding:4px 7px;color:var(--muted);font-size:.71rem">${s.situation || ''}</td>
+      <td style="padding:4px 7px;color:var(--muted);font-size:.67rem">${typo}</td>
+    </tr>`;
+  }).join('');
+
+  document.getElementById('stampPlanTable').innerHTML = `
+    <table style="width:100%;border-collapse:collapse;font-size:.73rem">
+      <thead>
+        <tr style="background:#F0EFFF;position:sticky;top:0">
+          <th style="padding:5px 7px;text-align:center;font-weight:700;color:#4A3F9F">#</th>
+          <th style="padding:5px 7px;text-align:center;font-weight:700;color:#4A3F9F">S</th>
+          <th style="padding:5px 7px;text-align:left;font-weight:700;color:#4A3F9F">フレーズ</th>
+          <th style="padding:5px 7px;text-align:left;font-weight:700;color:#4A3F9F">シチュエーション</th>
+          <th style="padding:5px 7px;text-align:left;font-weight:700;color:#4A3F9F">タイポグラフィ</th>
+        </tr>
+      </thead>
+      <tbody>${rows}</tbody>
+    </table>`;
+}
+
+// ─────────────────────────────────────────────────────
+// UI — Stamp tags panel
+// ─────────────────────────────────────────────────────
+function renderStampTagsPanel() {
+  const entry = detectedObjects.find(e => e.key === 'stamp_tags');
+  const panel = document.getElementById('stampTagsPanel');
+  if (!entry) {
+    panel.style.display = 'none';
+    stampTagsData = null;
+    return;
+  }
+  stampTagsData = entry.obj;
+  panel.style.display = 'block';
+}
+
+function copyStampTags() {
+  if (!stampTagsData) return;
+  const lines = Object.keys(stampTagsData)
+    .sort((a, b) => Number(a) - Number(b))
+    .map(k => `${k}: ${stampTagsData[k].join(', ')}`);
+  const text = lines.join('\n');
+  navigator.clipboard.writeText(text).then(() => {
+    const fb = document.getElementById('stampTagsCopyFb');
+    fb.classList.add('show');
+    setTimeout(() => fb.classList.remove('show'), 2500);
+  }).catch(() => {
+    const tmp = document.createElement('textarea');
+    tmp.value = text;
+    document.body.appendChild(tmp);
+    tmp.select();
+    document.execCommand('copy');
+    document.body.removeChild(tmp);
+  });
+}
+
+// ─────────────────────────────────────────────────────
+// UI — Parse JSONs
+// ─────────────────────────────────────────────────────
+function parseJSONs() {
+  const text = document.getElementById('jsonInput').value;
+  const errEl = document.getElementById('errorBox');
+  errEl.classList.remove('show');
+
+  let objs;
+  try {
+    objs = parseMultipleJSONs(text);
+  } catch (e) {
+    showError('JSON 解析エラー: ' + e.message);
+    return;
+  }
+
+  if (objs.length === 0) {
+    showError('有効な JSON オブジェクトが見つかりませんでした。入力内容を確認してください。');
+    return;
+  }
+
+  // Reset step0 target populated flag so new JSON refreshes the default
+  const targetEl = document.getElementById('step0TargetInput');
+  if (targetEl) delete targetEl.dataset.populated;
+
+  detectedObjects = objs.map(obj => ({
+    obj,
+    key: autoDetect(obj),
+    manualKey: ''
+  }));
+
+  renderDetectedChips();
+  renderUnknownSection();
+  renderStep0Panel();
+  renderStampPlanPanel();
+  renderStampTagsPanel();
+  applyTemplate();
+}
+
+function showError(msg) {
+  const el = document.getElementById('errorBox');
+  el.textContent = msg;
+  el.classList.add('show');
+}
+
+function clearData() {
+  document.getElementById('jsonInput').value = '';
+  detectedObjects = [];
+  stampTagsData   = null;
+
+  // Reset step0 panel
+  const targetEl = document.getElementById('step0TargetInput');
+  if (targetEl) { targetEl.value = ''; delete targetEl.dataset.populated; }
+
+  renderDetectedChips();
+  renderUnknownSection();
+  renderStep0Panel();
+  renderStampPlanPanel();
+  renderStampTagsPanel();
+  document.getElementById('errorBox').classList.remove('show');
+  applyTemplate();
+}
+
+// ─────────────────────────────────────────────────────
+// UI — Render detected chips
+// ─────────────────────────────────────────────────────
+function renderDetectedChips() {
+  const el = document.getElementById('detectedChips');
+  const known   = detectedObjects.filter(e => e.key);
+  const unknown = detectedObjects.filter(e => !e.key);
+
+  if (known.length === 0 && unknown.length === 0) {
+    el.innerHTML = '<span style="font-size:.72rem;color:var(--muted)">まだ解析されていません</span>';
+    return;
+  }
+
+  const knownHTML = known.map(e =>
+    `<span class="chip chip-ok">✓ ${e.key}</span>`
+  ).join('');
+
+  const unknownHTML = unknown.map((e, i) =>
+    `<span class="chip chip-bad">? 不明[${i}]</span>`
+  ).join('');
+
+  el.innerHTML = knownHTML + unknownHTML;
+}
+
+// ─────────────────────────────────────────────────────
+// UI — Render unknown mappings
+// ─────────────────────────────────────────────────────
+function renderUnknownSection() {
+  const section = document.getElementById('unknownSection');
+  const unknowns = detectedObjects.filter(e => !e.key);
+
+  if (unknowns.length === 0) { section.innerHTML = ''; return; }
+
+  // Find original indices
+  const rows = unknowns.map((entry) => {
+    const idx = detectedObjects.indexOf(entry);
+    const preview = JSON.stringify(entry.obj).slice(0, 70);
+    return `
+      <div class="unknown-row">
+        <span class="unknown-preview" title="${JSON.stringify(entry.obj).replace(/"/g,'&quot;')}">
+          JSON[${idx}]: ${preview}…
+        </span>
+        <input class="key-input" type="text"
+          placeholder="キー名 (例: step3)"
+          value="${entry.manualKey || ''}"
+          data-idx="${idx}"
+          oninput="setManualKey(${idx}, this.value)"
+        />
+      </div>`;
+  });
+
+  section.innerHTML = `
+    <div>
+      <div class="label" style="margin-bottom:6px">不明な JSON — 手動キー割り当て</div>
+      <div style="display:flex;flex-direction:column;gap:6px">${rows.join('')}</div>
+    </div>`;
+}
+
+function setManualKey(idx, val) {
+  detectedObjects[idx].manualKey = val.trim();
+  renderDetectedChips();
+  applyTemplate();
+}
+
+// ─────────────────────────────────────────────────────
+// UI — Params
+// ─────────────────────────────────────────────────────
+function addParamRow(key = '', val = '') {
+  const container = document.getElementById('paramsContainer');
+  const row = document.createElement('div');
+  row.className = 'param-row';
+  row.innerHTML = `
+    <input type="text" placeholder="キー (例: session_num)" value="${key}" oninput="rebuildParams()">
+    <span class="param-sep">=</span>
+    <input type="text" placeholder="値 (例: 1)" value="${val}" oninput="rebuildParams()">
+    <button class="btn btn-danger-ghost btn-sm" onclick="this.closest('.param-row').remove(); rebuildParams()">✕</button>`;
+  container.appendChild(row);
+}
+
+function rebuildParams() {
+  params = {};
+  document.querySelectorAll('#paramsContainer .param-row').forEach(row => {
+    const inputs = row.querySelectorAll('input');
+    const k = inputs[0].value.trim();
+    const v = inputs[1].value.trim();
+    if (k) {
+      const num = Number(v);
+      params[k] = (v !== '' && !isNaN(num)) ? num : v;
+    }
+  });
+  applyTemplate();
+}
+
+// ─────────────────────────────────────────────────────
+// UI — Apply template
+// ─────────────────────────────────────────────────────
+function applyTemplate() {
+  const template = document.getElementById('templateInput').value;
+  const outputEl = document.getElementById('outputArea');
+  const statusEl = document.getElementById('statusBar');
+
+  if (!template.trim()) {
+    outputEl.value = '';
+    statusEl.innerHTML = '';
+    return;
+  }
+
+  const ctx    = buildContext();
+  const output = fillTemplate(template, ctx);
+  outputEl.value = output;
+
+  // Status
+  const charCount  = output.length;
+  const unresolved = (output.match(/\{\{[\w._#/\s=]+\}\}/g) || []);
+  const uCount     = unresolved.length;
+
+  statusEl.innerHTML = `${charCount.toLocaleString()} 文字 &nbsp;|&nbsp; ` + (
+    uCount > 0
+      ? `<span class="bad">⚠ 未解決プレイスホルダ: ${uCount} 個</span>`
+      : `<span class="ok">✓ 全プレイスホルダ解決済み</span>`
+  );
+}
+
+function clearTemplate() {
+  document.getElementById('templateInput').value = '';
+  applyTemplate();
+}
+
+// ─────────────────────────────────────────────────────
+// UI — Copy output
+// ─────────────────────────────────────────────────────
+function copyOutput() {
+  const text = document.getElementById('outputArea').value;
+  if (!text) return;
+  navigator.clipboard.writeText(text).then(() => {
+    const fb = document.getElementById('copyFeedback');
+    fb.classList.add('show');
+    setTimeout(() => fb.classList.remove('show'), 2500);
+  }).catch(() => {
+    // Fallback for browsers without clipboard API
+    document.getElementById('outputArea').select();
+    document.execCommand('copy');
+  });
+}
+
+// ─────────────────────────────────────────────────────
+// UI — Collapsible
+// ─────────────────────────────────────────────────────
+function toggleCollapsible(btnId, panelId) {
+  document.getElementById(btnId).classList.toggle('open');
+  document.getElementById(panelId).classList.toggle('open');
+}
+
+// ─────────────────────────────────────────────────────
+// Init
+// ─────────────────────────────────────────────────────
+document.addEventListener('DOMContentLoaded', () => {
+  // Start with one empty param row
+  addParamRow('session_num', '1');
+
+  // Auto-process when template changes
+  document.getElementById('templateInput').addEventListener('input', applyTemplate);
+
+  // Auto-parse JSON with debounce
+  let debounce;
+  document.getElementById('jsonInput').addEventListener('input', () => {
+    clearTimeout(debounce);
+    debounce = setTimeout(parseJSONs, 700);
+  });
+});
+</script>
+</body>
+</html>
